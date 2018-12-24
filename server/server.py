@@ -47,7 +47,7 @@ class JudgeServer:
         return data
 
     @classmethod
-    def judge(cls, language_config, src, max_cpu_time, max_memory, test_case_id,
+    def judge(cls, language_config, src, max_cpu_time, max_memory, test_case,
               spj_version=None, spj_config=None, spj_compile_config=None, spj_src=None, output=False):
         # init
         compile_config = language_config.get("compile")
@@ -92,7 +92,7 @@ class JudgeServer:
                                        exe_path=exe_path,
                                        max_cpu_time=max_cpu_time,
                                        max_memory=max_memory,
-                                       test_case_id=str(test_case_id),
+                                       test_case=test_case,
                                        submission_dir=submission_dir,
                                        spj_version=spj_version,
                                        spj_config=spj_config,

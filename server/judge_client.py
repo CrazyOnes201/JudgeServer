@@ -19,15 +19,17 @@ def _run(instance, test_case_file_id):
 
 
 class JudgeClient(object):
-    def __init__(self, run_config, exe_path, max_cpu_time, max_memory, test_case_id,
+    def __init__(self, run_config, exe_path, max_cpu_time, max_memory, test_case,
                  submission_dir, spj_version, spj_config, output=False):
         self._run_config = run_config
         self._exe_path = exe_path
         self._max_cpu_time = max_cpu_time
         self._max_memory = max_memory
         self._max_real_time = self._max_cpu_time * 3
-        self._test_case_id = test_case_id
-        self._test_case_dir = os.path.join(TEST_CASE_DIR, test_case_id)
+        self._test_case = test_case
+        #  原_test_case_dir
+        self._info_dir = os.path.join(TEST_CASE_DIR, "normal")
+        #  使用submission dir来做testcase的路径
         self._submission_dir = submission_dir
 
         self._pool = Pool(processes=psutil.cpu_count())
@@ -44,7 +46,7 @@ class JudgeClient(object):
 
     def _load_test_case_info(self):
         try:
-            with open(os.path.join(self._test_case_dir, "info")) as f:
+            with open(os.path.join(self._info_dir, "info")) as f:
                 return json.load(f)
         except IOError:
             raise JudgeClientError("Test case not found")
@@ -95,8 +97,9 @@ class JudgeClient(object):
             return SPJ_ERROR
 
     def _judge_one(self, test_case_file_id):
-        test_case_info = self._get_test_case_file_info(test_case_file_id)
-        in_file = os.path.join(self._test_case_dir, test_case_info["input_name"])
+        # 将获取的test_case_info暂时定为 normal info 中 1对应的info
+        test_case_info = self._get_test_case_file_info("1")
+        in_file = os.path.join(self._submission_dir, test_case_file_id + ".in")
         user_output_file = os.path.join(self._submission_dir, test_case_file_id + ".out")
 
         command = self._run_config["command"].format(exe_path=self._exe_path, exe_dir=os.path.dirname(self._exe_path),
@@ -138,9 +141,10 @@ class JudgeClient(object):
                     run_result["result"] = _judger.RESULT_SYSTEM_ERROR
                     run_result["error"] = _judger.ERROR_SPJ_ERROR
             else:
-                run_result["output_md5"], is_ac = self._compare_output(test_case_file_id)
-                # -1 == Wrong Answer
+                # 对比normal 1对应的输出 这里的output_md5不重要
+                run_result["output_md5"], is_ac = self._compare_output("1")
                 if not is_ac:
+                    # 这里是不是不能反应是否超时或者超过内存限制等
                     run_result["result"] = _judger.RESULT_WRONG_ANSWER
 
         if self._output:
@@ -155,8 +159,14 @@ class JudgeClient(object):
     def run(self):
         tmp_result = []
         result = []
-        for test_case_file_id, _ in self._test_case_info["test_cases"].items():
-            tmp_result.append(self._pool.apply_async(_run, (self, test_case_file_id)))
+        for key, value in self._test_case.items():
+            inFilePath = os.path.join(self._submission_dir, key + ".in")
+            inFile = open(inFilePath, "w")
+            inFile.write(str(value))
+            inFile.close()
+            tmp_result.append(self._pool.apply_async(_run, (self, key)))
+        # for test_case_file_id, _ in self._test_case_info["test_cases"].items():
+        #     tmp_result.append(self._pool.apply_async(_run, (self, test_case_file_id)))
         self._pool.close()
         self._pool.join()
         for item in tmp_result:

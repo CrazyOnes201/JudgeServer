@@ -61,7 +61,7 @@ class JudgeClient(object):
         with open(user_output_file, "rb") as f:
             content = f.read()
         output_md5 = hashlib.md5(content.rstrip()).hexdigest()
-        result = output_md5 == self._get_test_case_file_info(test_case_file_id)["stripped_output_md5"]
+        result = output_md5 == self._get_test_case_file_info("1")["stripped_output_md5"]
         return output_md5, result
 
     def _spj(self, in_file_path, user_out_file_path):
@@ -142,7 +142,7 @@ class JudgeClient(object):
                     run_result["error"] = _judger.ERROR_SPJ_ERROR
             else:
                 # 对比normal 1对应的输出 这里的output_md5不重要
-                run_result["output_md5"], is_ac = self._compare_output("1")
+                run_result["output_md5"], is_ac = self._compare_output(test_case_file_id)
                 if not is_ac:
                     # 这里是不是不能反应是否超时或者超过内存限制等
                     run_result["result"] = _judger.RESULT_WRONG_ANSWER
